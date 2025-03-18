@@ -15,6 +15,7 @@ package main
 import (
 	"log"
 	"math/rand"
+	"strings"
 )
 
 // info is called when you create your Battlesnake on play.battlesnake.com
@@ -42,13 +43,9 @@ func end(state GameState) {
 	log.Printf("GAME OVER\n\n")
 }
 
-func isHeadAvoidingBody(newHead Coord, body []Coord) bool {
-	for _, segment := range body {
-		if newHead == segment {
-			return false
-		}
-	}
-	return true
+func isHeadAvoidingBody(newHead Coord, body map[Coord]struct{}) bool {
+	_, exists := body[newHead]
+	return !exists
 }
 
 // move is called on every turn and returns your next move
@@ -69,46 +66,58 @@ func move(state GameState) BattlesnakeMoveResponse {
 
 	if myNeck.X < myHead.X { // Neck is left of head, don't move left
 		isMoveSafe["left"] = false
+		log.Print("LEFT isn't safe, neck is in the way")
 
 	} else if myNeck.X > myHead.X { // Neck is right of head, don't move right
 		isMoveSafe["right"] = false
+		log.Print("RIGHT isn't safe, neck is in the way")
 
 	} else if myNeck.Y < myHead.Y { // Neck is below head, don't move down
 		isMoveSafe["down"] = false
+		log.Print("DOWN isn't safe, neck is in the way")
 
 	} else if myNeck.Y > myHead.Y { // Neck is above head, don't move up
 		isMoveSafe["up"] = false
+		log.Print("UP isn't safe, neck is in the way")
 	}
 
 	// TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
-	boardWidth := state.Board.Width
-	boardHeight := state.Board.Height
+	boardWidth, boardHeight := state.Board.Width, state.Board.Height // Width and Height of board e.g. 0,0 10,10
+	outOfBoard := map[string]bool{
+		"up":    myHead.Y+1 >= boardHeight,
+		"down":  myHead.Y-1 < 0,
+		"left":  myHead.X-1 < 0,
+		"right": myHead.X+1 >= boardWidth,
+	}
 
-	if myHead.X+1 == boardWidth {
-		isMoveSafe["right"] = false
-	} else if myHead.X == 0 {
-		isMoveSafe["left"] = false
-	} else if myHead.Y+1 == boardHeight {
-		isMoveSafe["up"] = false
-	} else if myHead.Y == 0 {
-		isMoveSafe["down"] = false
+	for move, isOut := range outOfBoard {
+		if isOut {
+			isMoveSafe[move] = false
+			log.Printf("%s isn't safe, off of board", strings.ToUpper(move))
+		}
 	}
 
 	// TODO: Step 2 - Prevent your Battlesnake from colliding with itself
-	mybody := state.You.Body
+	bodyMap := make(map[Coord]struct{}, len(state.You.Body))
+	for _, segment := range state.You.Body {
+		bodyMap[segment] = struct{}{}
+	}
 
-	leftHead := Coord{X: myHead.X - 1, Y: myHead.Y}
-	rightHead := Coord{X: myHead.X + 1, Y: myHead.Y}
-	upHead := Coord{X: myHead.X, Y: myHead.Y + 1}
-	downHead := Coord{X: myHead.X, Y: myHead.Y - 1}
-	if !isHeadAvoidingBody(leftHead, mybody) {
-		isMoveSafe["left"] = false
-	} else if !isHeadAvoidingBody(rightHead, mybody) {
-		isMoveSafe["right"] = false
-	} else if !isHeadAvoidingBody(upHead, mybody) {
-		isMoveSafe["up"] = false
-	} else if !isHeadAvoidingBody(downHead, mybody) {
-		isMoveSafe["down"] = false
+	moves := map[string][]Coord{
+		"left":  {{X: myHead.X - 1, Y: myHead.Y}, {X: myHead.X - 2, Y: myHead.Y}},
+		"right": {{X: myHead.X + 1, Y: myHead.Y}, {X: myHead.X + 2, Y: myHead.Y}},
+		"up":    {{X: myHead.X, Y: myHead.Y + 1}, {X: myHead.X, Y: myHead.Y + 2}},
+		"down":  {{X: myHead.X, Y: myHead.Y - 1}, {X: myHead.X, Y: myHead.Y - 2}},
+	}
+
+	for move, coords := range moves {
+		for _, coord := range coords {
+			if !isHeadAvoidingBody(coord, bodyMap) {
+				isMoveSafe[move] = false
+				log.Printf("%s isn't safe, body in way", strings.ToUpper(move))
+				break // No need to check further if the move is already unsafe
+			}
+		}
 	}
 
 	// TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
@@ -133,7 +142,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 	// TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
 	// food := state.Board.Food
 
-	log.Printf("MOVE %d: %s\n X:%d Y:%d", state.Turn, nextMove, myHead.X, myHead.Y)
+	log.Printf("MOVE %d: %s X:%d Y:%d\n", state.Turn, nextMove, myHead.X, myHead.Y)
 	return BattlesnakeMoveResponse{Move: nextMove}
 }
 
