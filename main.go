@@ -42,6 +42,15 @@ func end(state GameState) {
 	log.Printf("GAME OVER\n\n")
 }
 
+func isHeadAvoidingBody(newHead Coord, body []Coord) bool {
+	for _, segment := range body {
+		if newHead == segment {
+			return false
+		}
+	}
+	return true
+}
+
 // move is called on every turn and returns your next move
 // Valid moves are "up", "down", "left", or "right"
 // See https://docs.battlesnake.com/api/example-move for available data
@@ -86,7 +95,21 @@ func move(state GameState) BattlesnakeMoveResponse {
 	}
 
 	// TODO: Step 2 - Prevent your Battlesnake from colliding with itself
-	// mybody := state.You.Body
+	mybody := state.You.Body
+
+	leftHead := Coord{X: myHead.X - 1, Y: myHead.Y}
+	rightHead := Coord{X: myHead.X + 1, Y: myHead.Y}
+	upHead := Coord{X: myHead.X, Y: myHead.Y + 1}
+	downHead := Coord{X: myHead.X, Y: myHead.Y - 1}
+	if !isHeadAvoidingBody(leftHead, mybody) {
+		isMoveSafe["left"] = false
+	} else if !isHeadAvoidingBody(rightHead, mybody) {
+		isMoveSafe["right"] = false
+	} else if !isHeadAvoidingBody(upHead, mybody) {
+		isMoveSafe["up"] = false
+	} else if !isHeadAvoidingBody(downHead, mybody) {
+		isMoveSafe["down"] = false
+	}
 
 	// TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
 	// opponents := state.Board.Snakes
@@ -110,7 +133,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 	// TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
 	// food := state.Board.Food
 
-	log.Printf("MOVE %d: %s\n", state.Turn, nextMove)
+	log.Printf("MOVE %d: %s\n X:%d Y:%d", state.Turn, nextMove, myHead.X, myHead.Y)
 	return BattlesnakeMoveResponse{Move: nextMove}
 }
 
