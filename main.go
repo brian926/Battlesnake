@@ -43,9 +43,13 @@ func end(state GameState) {
 	log.Printf("GAME OVER\n\n")
 }
 
-func isHeadAvoidingBody(newHead Coord, body map[Coord]struct{}) bool {
-	_, exists := body[newHead]
-	return !exists
+func isHeadAvoidingBody(newHead Coord, body []Coord) bool {
+	for _, segment := range body {
+		if newHead == segment {
+			return false
+		}
+	}
+	return true
 }
 
 // move is called on every turn and returns your next move
@@ -98,30 +102,55 @@ func move(state GameState) BattlesnakeMoveResponse {
 	}
 
 	// TODO: Step 2 - Prevent your Battlesnake from colliding with itself
-	bodyMap := make(map[Coord]struct{}, len(state.You.Body))
-	for _, segment := range state.You.Body {
-		bodyMap[segment] = struct{}{}
+	myBody := state.You.Body
+
+	moves := map[string]Coord{
+		"left":     {X: myHead.X - 1, Y: myHead.Y},
+		"right":    {X: myHead.X + 1, Y: myHead.Y},
+		"up":       {X: myHead.X, Y: myHead.Y + 1},
+		"down":     {X: myHead.X, Y: myHead.Y - 1},
+		"twoleft":  {X: myHead.X - 2, Y: myHead.Y},
+		"tworight": {X: myHead.X + 2, Y: myHead.Y},
+		"twoup":    {X: myHead.X, Y: myHead.Y + 2},
+		"twodown":  {X: myHead.X, Y: myHead.Y - 2},
 	}
 
-	moves := map[string][]Coord{
-		"left":  {{X: myHead.X - 1, Y: myHead.Y}, {X: myHead.X - 2, Y: myHead.Y}},
-		"right": {{X: myHead.X + 1, Y: myHead.Y}, {X: myHead.X + 2, Y: myHead.Y}},
-		"up":    {{X: myHead.X, Y: myHead.Y + 1}, {X: myHead.X, Y: myHead.Y + 2}},
-		"down":  {{X: myHead.X, Y: myHead.Y - 1}, {X: myHead.X, Y: myHead.Y - 2}},
+	two := map[string]string{
+		"twoup":    "up",
+		"twodown":  "down",
+		"twoleft":  "left",
+		"tworight": "right",
 	}
 
-	for move, coords := range moves {
-		for _, coord := range coords {
-			if !isHeadAvoidingBody(coord, bodyMap) {
+	for move, coord := range moves {
+		if !isHeadAvoidingBody(coord, myBody) {
+			value, exists := two[move]
+			if exists {
+				isMoveSafe[value] = false
+				log.Printf("%s isn't safe, body in way", strings.ToUpper(value))
+			} else {
 				isMoveSafe[move] = false
 				log.Printf("%s isn't safe, body in way", strings.ToUpper(move))
-				break // No need to check further if the move is already unsafe
 			}
 		}
 	}
 
 	// TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
-	// opponents := state.Board.Snakes
+	opponents := state.Board.Snakes
+	for _, snakes := range opponents {
+		for move, coord := range moves {
+			if !isHeadAvoidingBody(coord, snakes.Body) {
+				value, exists := two[move]
+				if exists {
+					isMoveSafe[value] = false
+					log.Printf("%s isn't safe, another snake in way", strings.ToUpper(value))
+				} else {
+					isMoveSafe[move] = false
+					log.Printf("%s isn't safe, another snake in way", strings.ToUpper(move))
+				}
+			}
+		}
+	}
 
 	// Are there any safe moves left?
 	safeMoves := []string{}
