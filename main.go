@@ -127,7 +127,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 			value, exists := two[move]
 			if exists {
 				isMoveSafe[value] = false
-				log.Printf("%s isn't safe, body in way", strings.ToUpper(value))
+				log.Printf("Two %s isn't safe, body in way", strings.ToUpper(value))
 			} else {
 				isMoveSafe[move] = false
 				log.Printf("%s isn't safe, body in way", strings.ToUpper(move))
